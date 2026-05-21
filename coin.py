@@ -11,12 +11,12 @@ init(autoreset=True)
 
 load_dotenv()
 
-API_KEY = os.getenv('api_key')
-API_SECRET = os.getenv('api_secret')
+BINANCE_API_KEY = os.getenv('binance_api_key')
+BINANCE_API_SECRET = os.getenv('binance_api_secret')
 
 class Analyzer:
     def __init__(self, coin):
-        self.client = Client(API_KEY, API_SECRET)
+        self.client = Client(BINANCE_API_KEY, BINANCE_API_SECRET)
         self.symbol = coin.upper() + "USDT" 
         self.selected_coins = []
         self.deal_qty = 0

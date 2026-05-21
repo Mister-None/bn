@@ -4,7 +4,7 @@ from telethon.tl.functions.users import GetFullUserRequest
 from dotenv import load_dotenv
 import os, asyncio, sys
 
-load_dotenv()
+load_dotenv(dotenv_path=os.getenv('DOTENV_FILE_PATH'))
 
 TG_BOT_TOKEN = os.getenv('tg_bot_token')
 APP_ID = os.getenv('app_id') 
@@ -18,7 +18,7 @@ message = sys.argv[1]
 
 async def main():
     await client.start(bot_token=TG_BOT_TOKEN)
-    await client.send_message(TG_USER_ID, message)
+    await client.send_message(int(TG_USER_ID), message)
 
 asyncio.run(main())
 
