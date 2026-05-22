@@ -14,12 +14,15 @@ An automated trading suite that identifies high-potential coins and manages trad
 
 ## Installation
 1. **Clone the repository.**
-    `git clone https://github.com/Mister-None/bn`
-
-2. **Install dependencies:**
-   `pip install python-binance telethon python-dotenv colorama numpy`
-3. **Configure your `.env` file:**
+    ```bash
+    git clone https://github.com/Mister-None/bn
     ```
+2. **Install dependencies:**
+   ```bash
+   pip install python-binance telethon python-dotenv colorama numpy
+   ```
+3. **Configure your `.env` file:**
+    ```.env
     binance_api_key=your_key
     binance_api_secret=your_secret
     tg_bot_token=your_bot_token
@@ -29,14 +32,19 @@ An automated trading suite that identifies high-potential coins and manages trad
     tg_notificator_path=path/to/notifier.py
     ```
 4. **Make permanent variable by exporting `DOTENV_FILE_PATH` in `.bashrc`, etc.**
-    `export DOTENV_FILE_PATH=path/to/.env`
+    ```.bashrc
+    export DOTENV_FILE_PATH=path/to/.env
+    ```
 
 ## Usage
 - **To scan all USDT pairs and identify candidates meeting the volatility criteria:**
-    `python coin.py`
+    ```bash
+    python coin.py
+    ```
 - **To start the trader for a specific coin (e.g., BTC), define your thresholds (percent):**
-   `python bnbot.py [COIN] [BUY_THRESHOLD] [TAKE_PROFIT] [STOP_LOSS]`
-
+   ```bash
+   python bnbot.py [COIN] [BUY_THRESHOLD] [TAKE_PROFIT] [STOP_LOSS]
+   ```
 ## Strategy Logic
 - Filtering: Validates assets using quoteVolume thresholds and price percentage stability.
 - Decision Engine: Uses a combination of Volume-Weighted Averages (VWA) and Median price fluctuations to identify assets in a "Valid" state.
