@@ -24,7 +24,7 @@ class Analyzer:
     def filter1(self):
         tickers = self.client.get_ticker()
         for i in tickers:
-            if i['symbol'].endswith('USDT') and 100 <= float(i['quoteVolume']) * 0.00001 and 10 >= float(i['priceChangePercent']) >= -10:
+            if i['symbol'].endswith('USDT') and 100 <= float(i['quoteVolume']) * 0.000001 and 10 >= float(i['priceChangePercent']) >= -10:
                 self.selected_coins.append(i['symbol'])
 
     def filter2(self):
@@ -105,15 +105,15 @@ class Analyzer:
             self.filter3()
 
             if len(sys.argv) > 1:
-                print(self.symbol.replace('USDT', ''), round(med_min, 2), round(med_max, 2), round(3 * (VWA_min + VWA_max), 2))
-                print('MED_max(half)', round(med_max/2, 2))
-                print('MED_min(half)', round(med_min/2, 2))
+                print(self.symbol.replace('USDT', ''), round(med_min/2, 2), round(med_max/2, 2), round(3 * (VWA_min + VWA_max), 2))
+                print('MED_max(full)', round(med_max, 2))
+                print('MED_min(full)', round(med_min, 2))
                 print('VMA_max', round(VWA_max, 2))
                 print('VMA_min', round(VWA_min, 2))
                 self.filter2()
                 print(f"{self.deal_qty} - possible trades")
                 
-                if 3 * med_max >= VWA_max >= med_max and 3 * med_min >= VWA_min >=  med_min and self.deal_qty > 1: print("Valid")
+                if 3 * med_max >= VWA_max >= med_max and 3 * med_min >= VWA_min >=  med_min and self.deal_qty > 2: print("Valid")
                 
                 else: print('Not valid')
 

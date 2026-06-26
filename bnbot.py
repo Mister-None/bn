@@ -2,7 +2,7 @@ from binance import Client
 from time import sleep, strftime
 from dotenv import load_dotenv
 from colorama import Fore, init
-import sys, requests, os, math, subprocess
+import sys, requests, os, math, subprocess, asyncio, websockets, json
 
 init(autoreset=True)
 
@@ -10,6 +10,7 @@ load_dotenv(dotenv_path=os.getenv('DOTENV_FILE_PATH'))
 
 BINANCE_API_KEY = os.getenv('binance_api_key')
 BINANCE_API_SECRET = os.getenv('binance_api_secret')
+BINANCE_SOCKET = os.getenv('binance_socket')
 TG_NOTIFICATOR_PATH = os.getenv('tg_notificator_path')
 trading_sum = 100
 
@@ -34,6 +35,14 @@ class StableTrader:
         self.total_profit = 0
         self.buy_zone = 0
         self.message = ''
+        self.running = True
+
+    def get_current_price(self):
+        try: return float(self.client.get_symbol_ticker(symbol=self.symbol)['price'])
+        except Exception as e:
+            print(Fore.LIGHTGREEN_EX + str(e))
+            subprocess.run(['python', TG_NOTIFICATOR_PATH, str(e)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return None 
 
     def get_avg_price(self):
         try:
@@ -41,14 +50,9 @@ class StableTrader:
             prices = [(float(i[1]) + float(i[2]) + float(i[3]) + float(i[4])) / 4 for i in klines] 
             return sum(prices) / len(prices)
         except Exception as e: 
-            print(Fore.LIGHTRED_EX + str(e))
+            print(Fore.LIGHTYELLOW_EX + str(e))
             subprocess.run(['python', TG_NOTIFICATOR_PATH, str(e)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-
-    def get_current_price(self):
-        try: return float(self.client.get_symbol_ticker(symbol=self.symbol)['price'])
-        except Exception as e: 
-            print(Fore.LIGHTRED_EX + str(e))
-            subprocess.run(['python', TG_NOTIFICATOR_PATH, str(e)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return None
 
     def get_step_size(self):
         try: 
@@ -56,6 +60,8 @@ class StableTrader:
         except Exception as e: 
             print(Fore.LIGHTRED_EX + str(e))
             subprocess.run(['python', TG_NOTIFICATOR_PATH, str(e)], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            return None
+
     def buy(self, price, flc):
         self.buy_price = price
         #self.client.order_market_buy(symbol=self.symbol, quoteOrderQty=trading_sum)
@@ -75,45 +81,54 @@ class StableTrader:
         self.message = f"{selected_coin.split(' 👉')[0]}\nSell 👉  {flc}%\nDeal profit 👉  {profit}$\nTotal profit 👉  {self.total_profit}$"
         subprocess.run(['python', TG_NOTIFICATOR_PATH, self.message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
-    def run(self):
+    async def run(self):
         while True:
-            current_p = self.get_current_price()
+            try:
+                current_p = self.get_current_price()
+                if not current_p: 
+                    await asyncio.sleep(60) 
+                    continue
 
-            if self.counter_avg in upd_120_hours:
-                self.coin_step = self.get_step_size()
+                if self.counter_avg in upd_120_hours:
+                    self.coin_step = self.get_step_size()
+                    if not self.coin_step:
+                        await asyncio.sleep(60) 
+                        continue
 
-            if self.counter_avg in upd_8_hours:
-                avg_p = self.get_avg_price()
+                if self.counter_avg in upd_8_hours:
+                    avg_p = self.get_avg_price()
+                    if not avg_p: 
+                        await asyncio.sleep(60) 
+                        continue
 
-            if self.counter_avg == 0:
-                self.message = f"{selected_coin}\nFluc 👉  {round((current_p / avg_p * 100) - 100, 2)}%"
-                subprocess.run(['python', TG_NOTIFICATOR_PATH, self.message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                
-            try: fluc = round((current_p / avg_p * 100) - 100, 2)
+                if self.counter_avg == 0:
+                    self.message = f"{selected_coin}\nFluc 👉  {round((current_p / avg_p * 100) - 100, 2)}%"
+                    subprocess.run(['python', TG_NOTIFICATOR_PATH, self.message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+                    
+                fluc = round((current_p / avg_p * 100) - 100, 2)
+
+                if fluc < -float(sys.argv[4]) / 2:
+                    self.message = f"{selected_coin.split(' 👉')[0]}\nDANGER ZONE  👉  {fluc}%"
+                    subprocess.run(['python', TG_NOTIFICATOR_PATH, self.message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+              
+                if not self.hold_crypto:
+                    if current_p <= avg_p * buy_threshold:
+                        self.buy(current_p, fluc)
+
+                else: 
+                    if current_p >= self.buy_price * take_profit:
+                        self.sell(current_p, fluc)
+
+                    elif current_p <= self.buy_price * stop_loss:
+                        self.sell(current_p, fluc)
+                self.counter_avg += 1
+                await asyncio.sleep(60)
+
             except Exception as e:
-                print(Fore.LIGHTRED_EX + str(e))
+                print(str(e))
                 subprocess.run(['python', TG_NOTIFICATOR_PATH, 'Check trader bot!!!'], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-                sleep(600)
-                continue
-
-            if fluc < -float(sys.argv[4]) / 2:
-                self.message = f"{selected_coin.split(' 👉')[0]}\nDANGER ZONE  👉  {fluc}%"
-                subprocess.run(['python', TG_NOTIFICATOR_PATH, self.message], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-          
-            if not self.hold_crypto:
-                if current_p <= avg_p * buy_threshold:
-                    self.buy(current_p, fluc)
-
-            else: 
-                if current_p >= self.buy_price * take_profit:
-                    self.sell(current_p, fluc)
-
-                elif current_p <= self.buy_price * stop_loss:
-                    self.sell(current_p, fluc)
-            
-            sleep(60)
-            self.counter_avg += 1
-
+                await asyncio.sleep(600)
+    
 if __name__ == "__main__":
     if len(sys.argv) < 2:
         print("Provide a coin name!!!")
@@ -122,6 +137,5 @@ if __name__ == "__main__":
     coin_input = sys.argv[1]
     bot = StableTrader(coin_input)
     
-    try: bot.run()
+    try: asyncio.run(bot.run())
     except KeyboardInterrupt: print('\n Stopped by user!!!')
-
